@@ -1,0 +1,5 @@
+pandas
+Pillow
+opencv-python
+tqdm
+multiprocessing-logging
