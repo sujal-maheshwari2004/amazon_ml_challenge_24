@@ -1,210 +1,126 @@
-#### `common_mistake(unit)`
-
-**Purpose:**  
-Handles common unit errors by checking if the unit is within allowed units or correcting common misspellings.
-
-**Parameters:**  
-- `unit` (str): The unit of measurement to be validated or corrected.
-
-**Returns:**  
-- (str): The corrected or validated unit if it matches an allowed unit or a corrected form of it. Returns the original unit if no match is found.
-
-**Description:**  
-This function ensures that the unit of measurement conforms to allowed values by checking common misspellings or variations. It returns the unit as it should be recognized according to the predefined allowed units.
+Here's the updated `README.md` file based on the file names `download_label.py` and `batch_pre_processing.py`:
 
 ---
 
-#### `create_placeholder_image(image_save_path)`
+# Image Download, Labeling, and Batch Pre-processing Pipeline
 
-**Purpose:**  
-Creates a placeholder image when an image download fails.
+This repository contains two key Python scripts:
+1. **`download_label.py`**: Downloads images from URLs, saves them locally, and labels them with metadata.
+2. **`batch_pre_processing.py`**: Pre-processes images in batches, ensuring consistent size and quality for OCR (Optical Character Recognition) purposes.
 
-**Parameters:**  
-- `image_save_path` (str): Path where the placeholder image will be saved.
+## Features
 
-**Returns:**  
-- None
+- **Image Downloading** (`download_label.py`):
+  - Downloads images from URLs specified in CSV files and saves them with generated filenames.
+  - Uses multiprocessing to speed up the download process.
+  - Provides error handling with automatic retries and the generation of placeholder images in case of failures.
+  - Labels downloaded images based on their metadata, associating file paths with entity names and IDs.
 
-**Description:**  
-This function generates a 100x100 black placeholder image and saves it to the specified path. It is used as a fallback in case an image download fails, ensuring that there is a placeholder image at the intended location rather than leaving it empty.
+- **Batch Image Pre-processing** (`batch_pre_processing.py`):
+  - Pre-processes images for OCR, including resizing, padding, and noise reduction.
+  - Processes images in batches of 10,000, ensuring secure handling and tracking progress with `tqdm`.
+  - Adds padding to images to normalize their dimensions to 128x128 pixels.
+  - Handles both training and testing datasets.
 
-**Exception Handling:**  
-Prints an error message if the placeholder image creation fails.
+## Folder Structure
 
----
+```plaintext
+├── train.csv                        # CSV file containing metadata for the training images
+├── test.csv                         # CSV file containing metadata for the testing images
+├── processed_data                   # Folder where processed data will be saved
+│   ├── train_images                 # Downloaded and saved training images
+│   ├── test_images                  # Downloaded and saved testing images
+│   ├── train_preprocessed           # Preprocessed training images
+│   ├── test_preprocessed            # Preprocessed testing images
+│   ├── train_labeled.csv            # Labeled data for training set
+│   ├── test_labeled.csv             # Labeled data for testing set
+├── constants.py                     # Constants like allowed units for the entity
+├── download_label.py                # Script to download and label images
+├── batch_pre_processing.py          # Script to preprocess images in batches
+├── README.md                        # Documentation file
+```
 
-#### `download_image(image_link, index, entity_name, save_folder, retries=3, delay=3)`
+## Requirements
 
-**Purpose:**  
-Downloads an image from a URL and saves it to a specified folder. 
+- Python 3.7 or higher
+- The following Python packages:
+  - `Pillow`
+  - `opencv-python`
+  - `tqdm`
+  - `pandas`
+  - `multiprocessing`
+  - `urllib`
 
-**Parameters:**  
-- `image_link` (str): URL of the image to be downloaded.
-- `index` (int): Index for creating a unique filename.
-- `entity_name` (str): Entity name for creating a descriptive filename.
-- `save_folder` (str): Directory where the image will be saved.
-- `retries` (int, optional): Number of times to retry the download in case of failure (default is 3).
-- `delay` (int, optional): Delay between retries in seconds (default is 3).
+Install the required packages with:
 
-**Returns:**  
-- None
+```bash
+pip install -r requirements.txt
+```
 
-**Description:**  
-Attempts to download the image from the provided URL and save it with a filename formatted as `index_entity_name.jpg`. If the download fails, it will retry up to the specified number of times with a delay between attempts. If all retries fail, it creates a placeholder image at the same path.
+## Usage
 
-**Exception Handling:**  
-Retries download on failure and creates a placeholder image if download attempts fail.
+### 1. Download and Label Images (`download_label.py`)
 
----
+To download and label images, run the `download_label.py` script:
 
-#### `download_image_with_index(image_link, index, save_folder, retries=3, delay=3)`
+```bash
+python download_label.py
+```
 
-**Purpose:**  
-Helper function to download an image with a filename based on its index.
+This will:
+- Download images from URLs specified in `train.csv` and `test.csv`.
+- Save the images in `processed_data/train_images` and `processed_data/test_images`.
+- Create labeled CSV files `train_labeled.csv` and `test_labeled.csv` containing the paths of the saved images along with their corresponding metadata.
 
-**Parameters:**  
-- `image_link` (str): URL of the image to be downloaded.
-- `index` (int): Index for creating a unique filename.
-- `save_folder` (str): Directory where the image will be saved.
-- `retries` (int, optional): Number of times to retry the download in case of failure (default is 3).
-- `delay` (int, optional): Delay between retries in seconds (default is 3).
+### 2. Pre-process Images in Batches (`batch_pre_processing.py`)
 
-**Returns:**  
-- None
+To pre-process images for OCR, run the `batch_pre_processing.py` script:
 
-**Description:**  
-Similar to `download_image`, but used specifically for downloading images with filenames formatted as `image_{index:04d}.jpg` where `index` is zero-padded. This function is designed to work with multiprocessing, ensuring unique filenames and efficient downloading.
+```bash
+python batch_pre_processing.py
+```
 
-**Exception Handling:**  
-Retries download on failure and creates a placeholder image if download attempts fail.
+This will:
+- Normalize images in batches of 10,000, resizing them to 128x128 pixels.
+- Add padding if necessary to ensure consistent image sizes.
+- Pre-process both the training and testing datasets and save them in `processed_data/train_preprocessed` and `processed_data/test_preprocessed` directories, respectively.
 
----
+### 3. Customization
 
-#### `download_images(df, download_folder, allow_multiprocessing=True)`
+You can customize the script settings to match your requirements. For example:
+- `base_folder`: Set the base directory where all processed data will be saved.
+- `train_csv`, `test_csv`: Paths to the CSV files containing metadata for training and testing images.
+- Modify batch size or image dimensions in `batch_pre_processing.py` as per your OCR model's requirements.
 
-**Purpose:**  
-Manages the download of multiple images as specified in a DataFrame.
+## Error Handling
 
-**Parameters:**  
-- `df` (pd.DataFrame): DataFrame containing image URLs and associated metadata.
-- `download_folder` (str): Directory where the images will be saved.
-- `allow_multiprocessing` (bool, optional): Whether to use multiprocessing for image downloading (default is True).
+- **Image Downloading**: 
+  - Images are retried up to 3 times if the download fails. If it still fails, a placeholder image is created.
+  
+- **Batch Pre-processing**:
+  - The script processes images in batches to prevent memory overflow. Progress is tracked using `tqdm`.
 
-**Returns:**  
-- None
+## Output
 
-**Description:**  
-Downloads images listed in the DataFrame `df`. If `allow_multiprocessing` is `True`, it uses multiprocessing to speed up the downloading process. Each image is downloaded with a unique filename based on its index in the DataFrame. 
+After running both scripts, you will find the following output:
+- **Downloaded Images**: Stored in `processed_data/train_images` and `processed_data/test_images`.
+- **Preprocessed Images**: Saved in `processed_data/train_preprocessed` and `processed_data/test_preprocessed`.
+- **Labeled CSV Files**: `train_labeled.csv` and `test_labeled.csv`, containing paths to the images and their metadata.
 
-**Exception Handling:**  
-Handles file existence checks to avoid redundant downloads. Retries downloads in case of failure.
+## Example Usage
 
----
+1. Run the image downloading and labeling:
+   ```bash
+   python download_label.py
+   ```
 
-#### `preprocess_image(image_path, output_folder, base_width=500)`
+2. Run the batch pre-processing for OCR:
+   ```bash
+   python batch_pre_processing.py
+   ```
 
-**Purpose:**  
-Preprocesses an image by converting it to grayscale, resizing it, and applying noise removal.
-
-**Parameters:**  
-- `image_path` (str): Path of the image to be preprocessed.
-- `output_folder` (str): Directory where the preprocessed image will be saved.
-- `base_width` (int, optional): Target width for resizing the image (default is 500).
-
-**Returns:**  
-- (str or None): Path of the preprocessed image if successful, otherwise `None`.
-
-**Description:**  
-Processes an image by:
-1. Converting it to grayscale.
-2. Resizing it to a specified width while maintaining aspect ratio.
-3. Applying Gaussian blur and thresholding to remove noise.
-The processed image is saved to the output folder with the same filename as the original.
-
-**Exception Handling:**  
-Prints an error message if preprocessing fails.
-
----
-
-#### `preprocess_all_images(image_folder, output_folder)`
-
-**Purpose:**  
-Preprocesses all images in a specified folder.
-
-**Parameters:**  
-- `image_folder` (str): Directory containing the images to be preprocessed.
-- `output_folder` (str): Directory where the preprocessed images will be saved.
-
-**Returns:**  
-- (list): List of paths to preprocessed images.
-
-**Description:**  
-Loops through all JPEG images in the specified folder, processes each image using `preprocess_image`, and saves the result to the output folder. Collects and returns paths to all successfully preprocessed images.
-
-**Exception Handling:**  
-Handles file existence and image format issues by filtering out non-JPEG files.
+After this, you will have a fully downloaded, labeled, and pre-processed dataset ready for OCR tasks.
 
 ---
 
-#### `label_images(df, preprocessed_folder)`
-
-**Purpose:**  
-Labels images based on metadata from a DataFrame.
-
-**Parameters:**  
-- `df` (pd.DataFrame): DataFrame containing image metadata.
-- `preprocessed_folder` (str): Directory containing preprocessed images.
-
-**Returns:**  
-- (list): List of dictionaries with image labels and paths.
-
-**Description:**  
-Matches preprocessed images with metadata from the DataFrame. Creates a list of dictionaries containing:
-- `index`: Index from the DataFrame.
-- `preprocessed_image_path`: Path to the preprocessed image.
-- `entity_name`: Name of the entity.
-- `group_id`: Group ID of the entity.
-
----
-
-#### `process_images(data_csv, download_folder, preprocessed_folder)`
-
-**Purpose:**  
-Combines the image processing steps: downloading, preprocessing, and labeling.
-
-**Parameters:**  
-- `data_csv` (str): Path to the CSV file containing image URLs and metadata.
-- `download_folder` (str): Directory where the downloaded images will be saved.
-- `preprocessed_folder` (str): Directory where preprocessed images will be saved.
-
-**Returns:**  
-- (pd.DataFrame): DataFrame containing labeled image data.
-
-**Description:**  
-Executes the entire image processing pipeline:
-1. Downloads images from URLs in the CSV file.
-2. Preprocesses the downloaded images.
-3. Labels the preprocessed images based on the metadata in the CSV file.
-Returns a DataFrame with the results.
-
----
-
-#### `process_train_and_test(train_csv, test_csv, base_folder)`
-
-**Purpose:**  
-Processes both training and test datasets by calling `process_images` for each.
-
-**Parameters:**  
-- `train_csv` (str): Path to the CSV file for training data.
-- `test_csv` (str): Path to the CSV file for test data.
-- `base_folder` (str): Root directory for storing processed data.
-
-**Returns:**  
-- None
-
-**Description:**  
-Processes the training and test datasets separately by:
-1. Downloading images from training and test CSV files.
-2. Preprocessing downloaded images.
-3. Labeling the preprocessed images.
-Saves labeled data as CSV files in the base folder.
+This `README.md` gives a clear understanding of the two scripts, their purpose, how to run them, and what outputs to expect. Let me know if you need further adjustments!
