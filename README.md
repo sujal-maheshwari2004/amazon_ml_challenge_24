@@ -1,68 +1,118 @@
-# ML Challenge Problem Statement
+# Image Download, Labeling, and Batch Pre-processing Pipeline
 
-## Feature Extraction from Images
+This repository contains two key Python scripts:
+1. **`download_label.py`**: Downloads images from URLs, saves them locally, and labels them with metadata.
+2. **`batch_pre_processing.py`**: Pre-processes images in batches, ensuring consistent size and quality for OCR (Optical Character Recognition) purposes.
 
-In this hackathon, the goal is to create a machine learning model that extracts entity values from images. This capability is crucial in fields like healthcare, e-commerce, and content moderation, where precise product information is vital. As digital marketplaces expand, many products lack detailed textual descriptions, making it essential to obtain key details directly from images. These images provide important information such as weight, volume, voltage, wattage, dimensions, and many more, which are critical for digital stores.
+## Features
 
-### Data Description: 
+- **Image Downloading** (`download_label.py`):
+  - Downloads images from URLs specified in CSV files and saves them with generated filenames.
+  - Uses multiprocessing to speed up the download process.
+  - Provides error handling with automatic retries and the generation of placeholder images in case of failures.
+  - Labels downloaded images based on their metadata, associating file paths with entity names and IDs.
 
-The dataset consists of the following columns: 
+- **Batch Image Pre-processing** (`batch_pre_processing.py`):
+  - Pre-processes images for OCR, including resizing, padding, and noise reduction.
+  - Processes images in batches of 10,000, ensuring secure handling and tracking progress with `tqdm`.
+  - Adds padding to images to normalize their dimensions to 128x128 pixels.
+  - Handles both training and testing datasets.
 
-1. **index:** An unique identifier (ID) for the data sample
-2. **image_link**: Public URL where the product image is available for download. Example link - https://m.media-amazon.com/images/I/71XfHPR36-L.jpg
-    To download images use `download_images` function from `src/utils.py`. See sample code in `src/test.ipynb`.
-3. **group_id**: Category code of the product
-4. **entity_name:** Product entity name. For eg: “item_weight” 
-5. **entity_value:** Product entity value. For eg: “34 gram” 
-    Note: For test.csv, you will not see the column `entity_value` as it is the target variable.
+## Folder Structure
 
-### Output Format:
+```plaintext
+├── train.csv                        # CSV file containing metadata for the training images
+├── test.csv                         # CSV file containing metadata for the testing images
+├── processed_data                   # Folder where processed data will be saved
+│   ├── train_images                 # Downloaded and saved training images
+│   ├── test_images                  # Downloaded and saved testing images
+│   ├── train_preprocessed           # Preprocessed training images
+│   ├── test_preprocessed            # Preprocessed testing images
+│   ├── train_labeled.csv            # Labeled data for training set
+│   ├── test_labeled.csv             # Labeled data for testing set
+├── constants.py                     # Constants like allowed units for the entity
+├── download_label.py                # Script to download and label images
+├── batch_pre_processing.py          # Script to preprocess images in batches
+├── README.md                        # Documentation file
+```
 
-The output file should be a csv with 2 columns:
+## Requirements
 
-1. **index:** The unique identifier (ID) of the data sample. Note the index should match the test record index.
-2. **prediction:** A string which should have the following format: “x unit” where x is a float number in standard formatting and unit is one of the allowed units (allowed units are mentioned in the Appendix). The two values should be concatenated and have a space between them. For eg: “2 gram”, “12.5 centimetre”, “2.56 ounce” are valid. Few invalid cases: “2 gms”, “60 ounce/1.7 kilogram”, “2.2e2 kilogram” etc.
-    Note: Make sure to output a prediction for all indices. If no value is found in the image for any test sample, return empty string, i.e, `“”`. If you have less/more number of output samples in the output file as compared to test.csv, your output won’t be evaluated. 
+- Python 3.7 or higher
+- The following Python packages:
+  - `Pillow`
+  - `opencv-python`
+  - `tqdm`
+  - `pandas`
+  - `multiprocessing`
+  - `urllib`
 
-### File Descriptions:
+Install the required packages with:
 
-*source files*
+```bash
+pip install -r requirements.txt
+```
 
-1. **src/sanity.py**: Sanity checker to ensure that the final output file passes all formatting checks. Note: the script will not check if less/more number of predictions are present compared to the test file. See sample code in `src/test.ipynb` 
-2. **src/utils.py**: Contains helper functions for downloading images from the image_link.
-3. **src/constants.py:** Contains the allowed units for each entity type.
-4. **sample_code.py:** We also provided a sample dummy code that can generate an output file in the given format. Usage of this file is optional. 
+## Usage
 
-*Dataset files*
+### 1. Download and Label Images (`download_label.py`)
 
-1. **dataset/train.csv**: Training file with labels (`entity_value`).
-2. **dataset/test.csv**: Test file without output labels (`entity_value`). Generate predictions using your model/solution on this file's data and format the output file to match sample_test_out.csv (Refer the above section "Output Format")
-3. **dataset/sample_test.csv**: Sample test input file.
-4. **dataset/sample_test_out.csv**: Sample outputs for sample_test.csv. The output for test.csv must be formatted in the exact same way. Note: The predictions in the file might not be correct
+To download and label images, run the `download_label.py` script:
 
-### Constraints
+```bash
+python download_label.py
+```
 
-1. You will be provided with a sample output file and a sanity checker file. Format your output to match the sample output file exactly and pass it through the sanity checker to ensure its validity. Note: If the file does not pass through the sanity checker, it will not be evaluated. You should recieve a message like `Parsing successfull for file: ...csv` if the output file is correctly formatted.
+This will:
+- Download images from URLs specified in `train.csv` and `test.csv`.
+- Save the images in `processed_data/train_images` and `processed_data/test_images`.
+- Create labeled CSV files `train_labeled.csv` and `test_labeled.csv` containing the paths of the saved images along with their corresponding metadata.
 
-2. You are given the list of allowed units in constants.py and also in Appendix. Your outputs must be in these units. Predictions using any other units will be considered invalid during validation.
+### 2. Pre-process Images in Batches (`batch_pre_processing.py`)
 
-### Evaluation Criteria
+To pre-process images for OCR, run the `batch_pre_processing.py` script:
 
-Submissions will be evaluated based on F1 score, which are standard measures of prediction accuracy for classification and extraction problems.
+```bash
+python batch_pre_processing.py
+```
 
-Let GT = Ground truth value for a sample and OUT be output prediction from the model for a sample. Then we classify the predictions into one of the 4 classes with the following logic: 
+This will:
+- Normalize images in batches of 10,000, resizing them to 128x128 pixels.
+- Add padding if necessary to ensure consistent image sizes.
+- Pre-process both the training and testing datasets and save them in `processed_data/train_preprocessed` and `processed_data/test_preprocessed` directories, respectively.
 
-1. *True Positives* - If OUT != `""` and GT != `""` and OUT == GT
-2. *False Positives* - If OUT != `""` and GT != `""` and OUT != GT
-3. *False Positives* - If OUT != `""` and GT == `""`
-4. *False Negatives* - If OUT == `""` and GT != `""`
-5. *True Negatives* - If OUT == `""` and GT == `""` 
+### 3. Customization
 
-Then, F1 score = 2*Precision*Recall/(Precision + Recall) where:
+You can customize the script settings to match your requirements. For example:
+- `base_folder`: Set the base directory where all processed data will be saved.
+- `train_csv`, `test_csv`: Paths to the CSV files containing metadata for training and testing images.
+- Modify batch size or image dimensions in `batch_pre_processing.py` as per your OCR model's requirements.
 
-1. Precision = True Positives/(True Positives + False Positives)
-2. Recall = True Positives/(True Positives + False Negatives)
+## Error Handling
 
-### Submission File
+- **Image Downloading**: 
+  - Images are retried up to 3 times if the download fails. If it still fails, a placeholder image is created.
+  
+- **Batch Pre-processing**:
+  - The script processes images in batches to prevent memory overflow. Progress is tracked using `tqdm`.
 
-Upload a test_out.csv file in the Portal with the exact same formatting as sample_test_out.csv
+## Output
+
+After running both scripts, you will find the following output:
+- **Downloaded Images**: Stored in `processed_data/train_images` and `processed_data/test_images`.
+- **Preprocessed Images**: Saved in `processed_data/train_preprocessed` and `processed_data/test_preprocessed`.
+- **Labeled CSV Files**: `train_labeled.csv` and `test_labeled.csv`, containing paths to the images and their metadata.
+
+## Example Usage
+
+1. Run the image downloading and labeling:
+   ```bash
+   python download_label.py
+   ```
+
+2. Run the batch pre-processing for OCR:
+   ```bash
+   python batch_pre_processing.py
+   ```
+
+After this, you will have a fully downloaded, labeled, and pre-processed dataset ready for OCR tasks.
