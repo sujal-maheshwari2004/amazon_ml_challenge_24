@@ -7,18 +7,21 @@ from tqdm import tqdm
 import multiprocessing
 from pathlib import Path
 from functools import partial
-import constants
 import pandas as pd
 import time  # Fix: Import the time module
 from time import time as timer
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Utility function to handle common unit errors
-def common_mistake(unit):
-    if unit in constants.allowed_units:
+def common_mistake(unit, allowed_units):
+    if unit in allowed_units:
         return unit
-    if unit.replace('ter', 'tre') in constants.allowed_units:
+    if unit.replace('ter', 'tre') in allowed_units:
         return unit.replace('ter', 'tre')
-    if unit.replace('feet', 'foot') in constants.allowed_units:
+    if unit.replace('feet', 'foot') in allowed_units:
         return unit.replace('feet', 'foot')
     return unit
 
@@ -27,8 +30,9 @@ def create_placeholder_image(image_save_path):
     try:
         placeholder_image = Image.new('RGB', (100, 100), color='black')
         placeholder_image.save(image_save_path)
+        logging.info(f"Created placeholder image: {image_save_path}")
     except Exception as e:
-        print(f"Failed to create placeholder image: {e}")
+        logging.error(f"Failed to create placeholder image: {e}")
 
 # Download the image from URL and save it to the folder
 def download_image(image_link, index, entity_name, save_folder, retries=3, delay=3):
@@ -40,13 +44,16 @@ def download_image(image_link, index, entity_name, save_folder, retries=3, delay
     image_save_path = os.path.join(save_folder, filename)
 
     if os.path.exists(image_save_path):
+        logging.info(f"Image already exists, skipping: {image_save_path}")
         return  # Skip download if already exists
 
     for _ in range(retries):
         try:
-            urllib.request.urlretrieve(image_link, image_save_path)  # Fix: Use urllib.request
+            urllib.request.urlretrieve(image_link, image_save_path)
+            logging.info(f"Downloaded image: {image_save_path}")
             return
-        except:
+        except Exception as e:
+            logging.error(f"Error downloading {image_link}: {e}")
             time.sleep(delay)
     
     # If download fails, create a placeholder image
@@ -68,8 +75,10 @@ def download_images(df, download_folder, allow_multiprocessing=True):
     if allow_multiprocessing:
         download_image_partial = partial(download_image_with_index, save_folder=download_folder)
 
-        # Limit the number of processes to avoid Windows handle limits
-        with multiprocessing.Pool(60) as pool:
+        num_cores = multiprocessing.cpu_count()  # Dynamic CPU core allocation
+        logging.info(f"Using {min(num_cores, 60)} processes for downloading images.")
+        
+        with multiprocessing.Pool(min(num_cores, 60)) as pool:
             list(tqdm(pool.imap(download_image_partial, image_data), total=len(image_data)))
             pool.close()
             pool.join()
@@ -86,7 +95,7 @@ def preprocess_image(image_path, output_folder, base_width=500):
         # Resizing
         w_percent = (base_width / float(img.size[0]))
         h_size = int((float(img.size[1]) * float(w_percent)))
-        img = img.resize((base_width, h_size), Image.ANTIALIAS)
+        img = img.resize((base_width, h_size), Image.LANCZOS)
 
         # Noise Removal
         img_cv = cv2.imread(image_path, 0)  # Read image in grayscale (OpenCV)
@@ -96,9 +105,10 @@ def preprocess_image(image_path, output_folder, base_width=500):
         # Save the preprocessed image
         preprocessed_path = os.path.join(output_folder, os.path.basename(image_path))
         cv2.imwrite(preprocessed_path, img_cv)
+        logging.info(f"Preprocessed and saved image: {preprocessed_path}")
         return preprocessed_path
     except Exception as e:
-        print(f"Error preprocessing image {image_path}: {e}")
+        logging.error(f"Error preprocessing image {image_path}: {e}")
         return None
 
 # Preprocess all downloaded images
@@ -132,7 +142,13 @@ def label_images(df, preprocessed_folder):
 # Combined process: download, preprocess, and label images for both train and test datasets
 def process_images(data_csv, download_folder, preprocessed_folder):
     df = pd.read_csv(data_csv)
-    
+
+    # Ensure required columns exist in the dataframe
+    required_columns = ['image_link', 'entity_name', 'group_id']
+    for col in required_columns:
+        if col not in df.columns:
+            raise ValueError(f"Missing required column: {col}")
+
     # Step 1: Download images
     download_images(df, download_folder)
 
@@ -156,16 +172,16 @@ def process_train_and_test(train_csv, test_csv, base_folder):
     test_preprocessed_folder = os.path.join(base_folder, 'test_preprocessed')
 
     # Process Train Dataset
-    print("Processing Train Dataset...")
+    logging.info("Processing Train Dataset...")
     train_labeled_df = process_images(train_csv, train_download_folder, train_preprocessed_folder)
     train_labeled_df.to_csv(os.path.join(base_folder, 'train_labeled.csv'), index=False)
     
     # Process Test Dataset
-    print("Processing Test Dataset...")
+    logging.info("Processing Test Dataset...")
     test_labeled_df = process_images(test_csv, test_download_folder, test_preprocessed_folder)
     test_labeled_df.to_csv(os.path.join(base_folder, 'test_labeled.csv'), index=False)
 
-    print("Finished processing both datasets.")
+    logging.info("Finished processing both datasets.")
     
 # Example usage
 if __name__ == "__main__":
