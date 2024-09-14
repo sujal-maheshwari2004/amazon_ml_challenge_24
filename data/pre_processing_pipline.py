@@ -1,6 +1,6 @@
 import os
 import re
-import urllib.request  # Fix: Import urllib.request directly
+import urllib.request
 import cv2
 from PIL import Image
 from tqdm import tqdm
@@ -44,7 +44,7 @@ def download_image(image_link, index, entity_name, save_folder, retries=3, delay
 
     for _ in range(retries):
         try:
-            urllib.request.urlretrieve(image_link, image_save_path)  # Fix: Use urllib.request
+            urllib.request.urlretrieve(image_link, image_save_path)
             return
         except:
             time.sleep(delay)
@@ -77,101 +77,58 @@ def download_images(df, download_folder, allow_multiprocessing=True):
         for image_data_item in tqdm(image_data, total=len(image_data)):
             download_image_with_index(image_data_item, download_folder)
 
-# Preprocess a single image (grayscale, resize, noise removal)
-def preprocess_image(image_path, output_folder, base_width=500):
-    try:
-        # Grayscale Conversion
-        img = Image.open(image_path).convert('L')
-
-        # Resizing
-        w_percent = (base_width / float(img.size[0]))
-        h_size = int((float(img.size[1]) * float(w_percent)))
-        img = img.resize((base_width, h_size), Image.ANTIALIAS)
-
-        # Noise Removal
-        img_cv = cv2.imread(image_path, 0)  # Read image in grayscale (OpenCV)
-        img_cv = cv2.GaussianBlur(img_cv, (5, 5), 0)
-        _, img_cv = cv2.threshold(img_cv, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        # Save the preprocessed image
-        preprocessed_path = os.path.join(output_folder, os.path.basename(image_path))
-        cv2.imwrite(preprocessed_path, img_cv)
-        return preprocessed_path
-    except Exception as e:
-        print(f"Error preprocessing image {image_path}: {e}")
-        return None
-
-# Preprocess all downloaded images
-def preprocess_all_images(image_folder, output_folder):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    image_files = [os.path.join(image_folder, f) for f in os.listdir(image_folder) if f.endswith('.jpg')]
-    preprocessed_paths = []
-    for image_path in tqdm(image_files, total=len(image_files)):
-        preprocessed_image = preprocess_image(image_path, output_folder)
-        if preprocessed_image:
-            preprocessed_paths.append(preprocessed_image)
-    return preprocessed_paths
-
 # Label images based on index, entity type, and group ID
-def label_images(df, preprocessed_folder):
+def label_images(df, download_folder):
     labeled_data = []
     for _, row in df.iterrows():
         filename = f"{row['index']}_{row['entity_name']}.jpg"
-        preprocessed_path = os.path.join(preprocessed_folder, filename)
-        if os.path.exists(preprocessed_path):
+        image_path = os.path.join(download_folder, filename)
+        if os.path.exists(image_path):
             labeled_data.append({
                 'index': row['index'],
-                'preprocessed_image_path': preprocessed_path,
+                'image_path': image_path,
                 'entity_name': row['entity_name'],
                 'group_id': row['group_id']
             })
     return labeled_data
 
-# Combined process: download, preprocess, and label images for both train and test datasets
-def process_images(data_csv, download_folder, preprocessed_folder):
+# Combined process: download and label images for both train and test datasets
+def process_images(data_csv, download_folder):
     df = pd.read_csv(data_csv)
     
     # Step 1: Download images
     download_images(df, download_folder)
 
-    # Step 2: Preprocess images
-    preprocess_all_images(download_folder, preprocessed_folder)
-
-    # Step 3: Label images
-    labeled_data = label_images(df, preprocessed_folder)
+    # Step 2: Label images
+    labeled_data = label_images(df, download_folder)
 
     # Convert the labeled data into a DataFrame for easy manipulation
     labeled_df = pd.DataFrame(labeled_data)
     
     return labeled_df
 
-# Process both train and test datasets, storing preprocessed images in respective folders
+# Process both train and test datasets, storing labeled data in CSV files
 def process_train_and_test(train_csv, test_csv, base_folder):
     train_download_folder = os.path.join(base_folder, 'train_images')
-    train_preprocessed_folder = os.path.join(base_folder, 'train_preprocessed')
-
     test_download_folder = os.path.join(base_folder, 'test_images')
-    test_preprocessed_folder = os.path.join(base_folder, 'test_preprocessed')
 
     # Process Train Dataset
     print("Processing Train Dataset...")
-    train_labeled_df = process_images(train_csv, train_download_folder, train_preprocessed_folder)
+    train_labeled_df = process_images(train_csv, train_download_folder)
     train_labeled_df.to_csv(os.path.join(base_folder, 'train_labeled.csv'), index=False)
     
     # Process Test Dataset
     print("Processing Test Dataset...")
-    test_labeled_df = process_images(test_csv, test_download_folder, test_preprocessed_folder)
+    test_labeled_df = process_images(test_csv, test_download_folder)
     test_labeled_df.to_csv(os.path.join(base_folder, 'test_labeled.csv'), index=False)
 
     print("Finished processing both datasets.")
     
 # Example usage
 if __name__ == "__main__":
-    base_folder = 'processed_data'  # Root folder for all processed data
-    train_csv = 'train.csv'  # Update with the correct path to your train.csv
-    test_csv = 'test.csv'    # Update with the correct path to your test.csv
+    base_folder = 'processed_data'  
+    train_csv = 'train.csv'  
+    test_csv = 'test.csv'    
 
     # Process both train and test datasets
     process_train_and_test(train_csv, test_csv, base_folder)
