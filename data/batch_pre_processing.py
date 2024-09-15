@@ -3,17 +3,17 @@ import csv
 import requests
 from PIL import Image, ImageFilter
 import numpy as np
-import cv2  # OpenCV for deskewing and adaptive thresholding
+import cv2
 from tqdm import tqdm
 from io import BytesIO
 
 # Define directories
-train_input_csv = 'dataset/train.csv'  # Path for the train dataset
-test_input_csv = 'dataset/test.csv'    # Path for the test dataset
+train_input_csv = 'dataset/train.csv'  
+test_input_csv = 'dataset/test.csv'
 train_output_dir = 'output/train/images'
 test_output_dir = 'output/test/images'
 batch_size = 10000
-target_size = (256, 256)  # Updated target size
+target_size = (256, 256) 
 
 # Ensure output directories exist
 for output_dir in [train_output_dir, test_output_dir]:
@@ -22,11 +22,11 @@ for output_dir in [train_output_dir, test_output_dir]:
 
 # Function to convert the image to grayscale
 def convert_to_grayscale(img):
-    return img.convert('L')  # Grayscale conversion
+    return img.convert('L')
 
 # Function to denoise the image
 def denoise_image(img):
-    img = img.filter(ImageFilter.MedianFilter())  # Apply denoising filter
+    img = img.filter(ImageFilter.MedianFilter())
     return img
 
 # Function to apply adaptive thresholding (for OCR purposes)
